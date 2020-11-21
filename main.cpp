@@ -14,7 +14,7 @@ struct ddfs_bs
 std::ostream& operator<<(std::ostream& out, const ddfs_bs& bs)
 {
   out << "sector_size: " << bs.sector_size
-      << ", sectors_per_cluster: " << bs.sectors_per_cluster
+      << ", sectors_per_cluster: " << (unsigned)bs.sectors_per_cluster
       << ", number_of_clusters: " << bs.number_of_clusters;
   return out;
 }
@@ -41,16 +41,29 @@ public:
     return bs;
   }
 
+  void write_bs(const ddfs_bs& bs) { write(0, sizeof(bs), &bs); }
+
 private:
   void set_read_offset(std::fstream::pos_type offset)
   {
     m_img.seekg(offset, std::ios_base::beg);
   }
 
+  void set_write_offset(std::fstream::pos_type offset)
+  {
+    m_img.seekp(offset, std::ios_base::beg);
+  }
+
   void read(std::fstream::pos_type offset, unsigned size, void* dest)
   {
     set_read_offset(offset);
     m_img.read(reinterpret_cast<char*>(dest), size);
+  }
+
+  void write(std::fstream::pos_type offset, unsigned size, const void* data)
+  {
+    set_write_offset(offset);
+    m_img.write(reinterpret_cast<const char*>(data), size);
   }
 
 private:
@@ -80,4 +93,11 @@ int main(int argc, const char* argv[])
   }
 
   std::cout << "current boot_sector: " << *boot_sector << "\n";
+
+  std::optional<ddfs_bs> bs = ddfs_bs{ .sector_size = 512,
+                                       .sectors_per_cluster = 1,
+                                       .number_of_clusters = 4 };
+
+  std::cout << "writing boot_sector: " << *bs << "\n";
+  fs.write_bs(*bs);
 }
